@@ -1,0 +1,38 @@
+# GitLab CI/CD - used for the GitLab Transcend hackathon (Path A: Start Fresh).
+# The Duo Agent Platform agents/flows are added on top of this pipeline.
+
+stages:
+  - test
+  - package
+  - secure
+  - release
+
+default:
+  image: python:3.12-slim
+
+test:
+  stage: test
+  script:
+    - pip install -r app/requirements.txt
+    - cd app && python -m pytest -v
+
+package:
+  stage: package
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+release:
+  stage: release
+  script:
+    - echo "Release stage - placeholder for deployment automation"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

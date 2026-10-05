@@ -1,0 +1,55 @@
+---
+- name: Configure runtime environment for the notes service
+  hosts: app_servers
+  become: true
+  vars:
+    app_user: notesapp
+    app_dir: /opt/notes-service
+    packages:
+      - python3
+      - python3-pip
+      - git
+      - curl
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: true
+
+    - name: Create application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+
+    - name: Copy application files
+      ansible.builtin.copy:
+        src: ../app/
+        dest: "{{ app_dir }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Write environment file
+      ansible.builtin.copy:
+        dest: "{{ app_dir }}/.env"
+        content: |
+          APP_VERSION=1.0.0
+        owner: "{{ app_user }}"
+        mode: "0600"
+
+    - name: Install Python dependencies
+      ansible.builtin.pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        extra_args: --break-system-packages
