@@ -1,0 +1,17 @@
+.git
+.github
+.gitlab-ci.yml
+ansible
+k8s
+monitoring
+docs
+scripts
+deploy
+**/__pycache__
+**/.pytest_cache
+**/test_*.py
+app/requirements-dev.txt
+*.pdf
+*.md
+.env
+.venv

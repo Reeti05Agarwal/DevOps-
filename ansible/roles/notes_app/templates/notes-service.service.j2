@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Notes service (DevOps CA-2)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_dir }}
+EnvironmentFile={{ app_dir }}/.env
+ExecStart={{ app_venv }}/bin/gunicorn --bind 0.0.0.0:{{ app_port }} --workers 1 --threads {{ gunicorn_threads }} main:app
+StandardOutput=append:{{ app_log_dir }}/app.log
+StandardError=append:{{ app_log_dir }}/error.log
+Restart=on-failure
+RestartSec=3
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ app_log_dir }}
+
+[Install]
+WantedBy=multi-user.target

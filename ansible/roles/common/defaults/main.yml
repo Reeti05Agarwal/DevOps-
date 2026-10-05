@@ -1,0 +1,12 @@
+---
+common_packages:
+  - python3
+  - python3-pip
+  - python3-venv
+  - git
+  - curl
+  - logrotate
+  - tzdata
+  - acl          # lets Ansible "become" the unprivileged app user
+timezone: Asia/Kolkata
+admin_users: []

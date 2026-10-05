@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notes-service
+  labels:
+    app: notes-service
+  annotations:
+    kubernetes.io/change-cause: "initial release 1.0.0"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  # If new pods never become Ready within 60s the rollout is marked as failed,
+  # which is the signal to run `kubectl rollout undo`.
+  progressDeadlineSeconds: 60
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # at most 4 pods during an update
+      maxUnavailable: 0  # never drop below 3 ready pods (zero downtime)
+  selector:
+    matchLabels:
+      app: notes-service
+  template:
+    metadata:
+      labels:
+        app: notes-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: notes-service
+          image: notes-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: notes-service-config
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              # Give the Service time to stop routing to this pod before it exits
+              exec:
+                command: ["sleep", "5"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}

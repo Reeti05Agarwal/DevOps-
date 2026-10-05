@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notes-service-config
+  labels:
+    app: notes-service
+data:
+  LOG_LEVEL: "INFO"
+  MAX_NOTE_LENGTH: "500"

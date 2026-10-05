@@ -1,0 +1,5 @@
+---
+profile: moderate
+skip_list:
+  # Role variables are shared via group_vars on purpose (app_port, app_version, ...)
+  - var-naming[no-role-prefix]

@@ -1,0 +1,11 @@
+---
+# Values shared by every host in [app_servers]. Override per host in host_vars/<host>.yml.
+app_version: "1.0.0"
+app_port: 5000
+app_log_level: INFO
+max_note_length: 500
+
+admin_users:
+  - name: devops
+    groups: [sudo]
+    shell: /bin/bash

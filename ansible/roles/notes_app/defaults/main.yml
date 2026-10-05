@@ -1,0 +1,26 @@
+---
+app_user: notesapp
+app_group: notesapp
+app_dir: /opt/notes-service
+app_venv: "{{ app_dir }}/venv"
+app_log_dir: /var/log/notes-service
+app_src: "{{ playbook_dir }}/../app"
+app_version: "1.0.0"
+app_port: 5000
+app_log_level: INFO
+max_note_length: 500
+gunicorn_threads: 4
+
+# Environment passed to the app (written to .env and used by systemd / gunicorn)
+app_env:
+  APP_VERSION: "{{ app_version }}"
+  LOG_LEVEL: "{{ app_log_level }}"
+  MAX_NOTE_LENGTH: "{{ max_note_length }}"
+
+gunicorn_cmd: >-
+  {{ app_venv }}/bin/gunicorn --daemon
+  --bind 0.0.0.0:{{ app_port }} --workers 1 --threads {{ gunicorn_threads }}
+  --chdir {{ app_dir }} --pid {{ app_dir }}/gunicorn.pid
+  --error-logfile {{ app_log_dir }}/error.log
+  --capture-output
+  main:app

@@ -1,0 +1,11 @@
+# Apply everything with: kubectl apply -k k8s/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: notes
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - pdb.yaml
+  - hpa.yaml

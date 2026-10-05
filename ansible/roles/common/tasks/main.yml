@@ -1,0 +1,40 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Set timezone
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ timezone }}"
+    dest: /etc/localtime
+    state: link
+    force: true
+
+- name: Write /etc/timezone
+  ansible.builtin.copy:
+    dest: /etc/timezone
+    content: "{{ timezone }}\n"
+    mode: "0644"
+
+- name: Create admin users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups | default([]) }}"
+    append: true
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    create_home: true
+    state: present
+  loop: "{{ admin_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Write login banner
+  ansible.builtin.template:
+    src: motd.j2
+    dest: /etc/motd
+    mode: "0644"

@@ -1,0 +1,113 @@
+---
+- name: Create application group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    system: true
+
+- name: Create application user (no login shell, no password)
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ app_dir }}"
+    create_home: false
+    state: present
+
+- name: Create application and log directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ app_dir }}", mode: "0755" }
+    - { path: "{{ app_log_dir }}", mode: "0750" }
+
+- name: Copy application code
+  ansible.builtin.copy:
+    src: "{{ app_src }}/{{ item }}"
+    dest: "{{ app_dir }}/{{ item }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0644"
+  loop:
+    - main.py
+    - requirements.txt
+  notify: Restart notes-service
+
+- name: Write environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0600"
+  notify: Restart notes-service
+
+- name: Install Python dependencies into a virtualenv
+  ansible.builtin.pip:
+    requirements: "{{ app_dir }}/requirements.txt"
+    virtualenv: "{{ app_venv }}"
+    virtualenv_command: python3 -m venv
+  notify: Restart notes-service
+
+- name: Give the app user ownership of the virtualenv
+  ansible.builtin.file:
+    path: "{{ app_venv }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    recurse: true
+
+- name: Configure log rotation
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/notes-service
+    mode: "0644"
+
+# ---- systemd hosts (real VMs) ----
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: notes-service.service.j2
+    dest: /etc/systemd/system/notes-service.service
+    mode: "0644"
+  when: ansible_service_mgr == "systemd"
+  notify: Restart notes-service
+
+- name: Enable and start the service (systemd)
+  ansible.builtin.systemd:
+    name: notes-service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ansible_service_mgr == "systemd"
+
+# ---- hosts without systemd (e.g. an Ubuntu Docker container used for testing) ----
+- name: Start gunicorn as a daemon (no systemd)
+  ansible.builtin.command:
+    cmd: "{{ gunicorn_cmd }}"
+    creates: "{{ app_dir }}/gunicorn.pid"
+  become_user: "{{ app_user }}"
+  environment: "{{ app_env }}"
+  when: ansible_service_mgr != "systemd"
+
+- name: Flush handlers so a changed app is restarted before the health check
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the app to answer on /health
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_port }}/health"
+    return_content: true
+  register: health_result
+  retries: 10
+  delay: 2
+  until: health_result.status == 200
+  changed_when: false
+
+- name: Check the deployed version matches the requested one
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_port }}/version"
+  register: version_result
+  failed_when: version_result.json.version != app_version
+  changed_when: false

@@ -1,0 +1,32 @@
+groups:
+  - name: notes-service
+    rules:
+      - alert: NotesServiceDown
+        expr: up{job="notes-service"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "notes-service is down"
+          description: "Prometheus cannot scrape {{ $labels.instance }} for 30s."
+
+      - alert: HighErrorRate
+        expr: |
+          100 * sum(rate(http_requests_total{status=~"5.."}[1m]))
+            / clamp_min(sum(rate(http_requests_total[1m])), 1e-9) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error rate above 5%"
+          description: "{{ $value | printf \"%.1f\" }}% of requests are failing."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency above 500ms"
+          description: "p95 latency is {{ $value | printf \"%.2f\" }}s."

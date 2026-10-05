@@ -1,0 +1,22 @@
+---
+- name: Restart notes-service
+  ansible.builtin.systemd:
+    name: notes-service
+    state: restarted
+    daemon_reload: true
+  when: ansible_service_mgr == "systemd"
+  listen: Restart notes-service
+
+- name: Restart gunicorn daemon (no systemd)
+  ansible.builtin.shell: |
+    if [ -f {{ app_dir }}/gunicorn.pid ]; then
+      kill "$(cat {{ app_dir }}/gunicorn.pid)" || true
+      sleep 2
+      rm -f {{ app_dir }}/gunicorn.pid
+    fi
+    {{ gunicorn_cmd }}
+  changed_when: true
+  become_user: "{{ app_user }}"
+  environment: "{{ app_env }}"
+  when: ansible_service_mgr != "systemd"
+  listen: Restart notes-service

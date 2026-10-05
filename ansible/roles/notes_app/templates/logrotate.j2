@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+{{ app_log_dir }}/*.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

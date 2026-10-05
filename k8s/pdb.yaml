@@ -1,0 +1,12 @@
+# Keeps at least 2 pods running during voluntary disruptions (node drain, upgrades).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notes-service
+  labels:
+    app: notes-service
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: notes-service

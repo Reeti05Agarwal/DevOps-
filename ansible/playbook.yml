@@ -1,0 +1,32 @@
+---
+# Configures a Debian/Ubuntu host to run the notes service.
+#   ansible-playbook playbook.yml --syntax-check
+#   ansible-playbook playbook.yml --check --diff     # dry run
+#   ansible-playbook playbook.yml                    # apply
+#   ansible-playbook playbook.yml --tags app         # only redeploy the app
+- name: Configure runtime environment for the notes service
+  hosts: app_servers
+  become: true
+
+  pre_tasks:
+    - name: Check the target is Debian-family
+      ansible.builtin.assert:
+        that: ansible_os_family == "Debian"
+        fail_msg: "This playbook uses apt; target is {{ ansible_os_family }}"
+      tags: always
+
+  roles:
+    - role: common
+      tags: common
+    - role: notes_app
+      tags: app
+
+  post_tasks:
+    - name: Summary
+      ansible.builtin.debug:
+        msg:
+          - "Host:      {{ inventory_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }})"
+          - "App:       {{ app_dir }} as user {{ app_user }}"
+          - "Service:   {{ 'systemd unit notes-service' if ansible_service_mgr == 'systemd' else 'gunicorn daemon (no systemd)' }}"
+          - "Health:    {{ health_result.json | default('n/a') }}"
+      tags: always
